@@ -18,6 +18,10 @@
 </p>
 
 - **RaPP** - Novelty Detection with Reconstruction along Projection Pathway <br>
+    * [Ppaer, ICLR 2020] https://openreview.net/attachment?id=HkgeGeBYDB&name=original_pdf
+    * [Desc, KOREAN] https://makinarocks.github.io/rapp/
+    * [Supplement #1] [Autoencoder based Anomaly Detection](https://makinarocks.github.io/Autoencoder-based-anomaly-detection/)
+    * [Supplement #2] [Reference code (github)](https://github.com/Aiden-Jeon/RaPP)
 <p align="center">
     <img src="imgs/rapp-f1.png" width="1100" height="300" style="display: block; margin: 0 auto"/>
 </p>
@@ -25,10 +29,6 @@
     <img src="imgs/rapp-f2.png" width="1100" height="300" style="display: block; margin: 0 auto"/>
 </p>
 
-    * [Ppaer, ICLR 2020] https://openreview.net/attachment?id=HkgeGeBYDB&name=original_pdf
-    * [Desc, KOREAN] https://makinarocks.github.io/rapp/
-    * [Supplement #1] [Autoencoder based Anomaly Detection](https://makinarocks.github.io/Autoencoder-based-anomaly-detection/)
-    * [Supplement #2] [Reference code (github)](https://github.com/Aiden-Jeon/RaPP)
 
 - - -
 
