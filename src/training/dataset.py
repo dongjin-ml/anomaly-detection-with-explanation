@@ -13,7 +13,8 @@ class CustomDataset(Dataset):
 
     def __getitem__(self, idx):
         
-        x = torch.tensor(self.x[idx]).type(torch.float32)
+        time = torch.tensor(self.x[idx, 0]).type(torch.int) 
+        x = torch.tensor(self.x[idx, 1:]).type(torch.float32)
         y = torch.tensor(self.y[idx]).type(torch.int)
         
-        return x, y
+        return time, x, y

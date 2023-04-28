@@ -12,12 +12,12 @@ import traceback
 import numpy as np
 import pandas as pd
 import torch.nn as nn
-from autoencoder import AutoEncoder
+from autoencoder import AutoEncoder, get_model
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
 
-NUM_FEATURES, SHINGLE_SIZE = 4, 4
+NUM_FEATURES, SHINGLE_SIZE, EMB_SIZE = 4, 4, 4
 FEATURE_NAME = ["URLS", "USERS", "CLICKS", "RESIDUALS"]
 
 class json_encoder(json.JSONEncoder):
@@ -36,10 +36,16 @@ def model_fn(model_dir):
     logger.info("### model_fn ###")
     device = "cuda" if torch.cuda.is_available() else "cpu"
     
-    input_dim = NUM_FEATURES*SHINGLE_SIZE
-    model = AutoEncoder(input_dim=input_dim)
-    logger.info(f'Input dim: {input_dim}, from num_features({NUM_FEATURES}) and shingle_size({SHINGLE_SIZE})')
-    print (f'Input dim: {input_dim}, from num_features({NUM_FEATURES}) and shingle_size({SHINGLE_SIZE})')
+    input_dim = NUM_FEATURES*SHINGLE_SIZE + EMB_SIZE
+    model = get_model(
+        input_dim=input_dim,
+        hidden_sizes=[64, 48],
+        btl_size=32,
+        emb_size=EMB_SIZE
+    )
+    
+    logger.info(f'Input dim: {input_dim}, from num_features({NUM_FEATURES}), shingle_size({SHINGLE_SIZE}) and emb_size({EMB_SIZE})')
+    print (f'Input dim: {input_dim}, from num_features({NUM_FEATURES}), shingle_size({SHINGLE_SIZE}) and emb_size({EMB_SIZE})')
     
     with open(os.path.join(model_dir, "best_model.pth"), "rb") as f:
         model.load_state_dict(torch.load(f))
@@ -100,14 +106,24 @@ def predict_fn(x, model):
         
         anomal_scores = []
         with torch.no_grad():
-            _x = model.forward(x)
-            e1, e2 = model.forward(x, hidden=True)
-            _e1, _e2 = model.forward(_x, hidden=True)
             
-            anomal_score = anomaly_calculator(x, _x)
-            sap_score = anomaly_calculator(x, _x).mean(dim=1) + anomaly_calculator(e1, _e1).mean(dim=1) + anomaly_calculator(e2, _e2).mean(dim=1)
             
-            for record, sap in zip(anomal_score.cpu().numpy(), sap_score.cpu().numpy()):
+            time, x = x[:, 0].type(torch.int), x[:, 1:]
+            
+            
+            
+            t_emb, _x = model.forward(time, x)
+            x = torch.cat([t_emb, x], dim=1)
+
+            
+            anomal_score = anomaly_calculator(x[:, EMB_SIZE:], _x[:, EMB_SIZE:]) # without time
+            anomal_score_sap = 0
+            for layer in model.encoder.layer_list:
+                x, _x = layer(x), layer(_x)
+                diffs = anomaly_calculator(x, _x)
+                anomal_score_sap += (diffs).mean(dim=1)
+            
+            for record, sap in zip(anomal_score.cpu().numpy(), anomal_score_sap.cpu().numpy()):
                 dicScore = {"ANOMALY_SCORE_SAP": sap}
                 for cnt, idx in enumerate(range(0, SHINGLE_SIZE*NUM_FEATURES, SHINGLE_SIZE)):
                     start = idx

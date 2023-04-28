@@ -6,7 +6,7 @@ import argparse
 import numpy as np
 import torch.nn as nn
 from dataset import CustomDataset
-from autoencoder import AutoEncoder
+from autoencoder import AutoEncoder, get_model
 
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.DEBUG)
@@ -37,14 +37,16 @@ class Trainer():
         for epoch in range(self.epoch):
             self.model.train()
             train_loss = []
-            for x, y in self.train_loader:
-                x = x.to(self.device)
+            for time, x, y in self.train_loader:
+                time, x = time.to(self.device), x.to(self.device)
                 
                 self.optimizer.zero_grad()
 
-                _x = self.model(x)
-                loss = self.criterion(x, _x)
+                _x = self.model(time, x)
+                t_emb, _x = self.model(time, x)
+                x = torch.cat([t_emb, x], dim=1)
                 
+                loss = self.criterion(x, _x)
                 loss.backward()
                 self.optimizer.step()
 
@@ -69,9 +71,13 @@ class Trainer():
         
         eval_model.eval()
         with torch.no_grad():
-            for x, y in self.val_loader:
-                x, y= x.to(self.device), y.to(self.device)
-                _x = self.model(x)
+            for time, x, y in self.val_loader:
+                time, x, y= time.to(self.device), x.to(self.device), y.to(self.device)
+                _x = self.model(time, x)
+                
+                t_emb, _x = self.model(time, x)
+                x = torch.cat([t_emb, x], dim=1)
+                
                 anomal_score = self.anomaly_calculator(x, _x)
                 diff = self.cos(x, _x).cpu().tolist()
                 
@@ -108,26 +114,27 @@ def from_pickle(obj_path):
 def get_and_define_dataset(args):
     
     train_x_scaled_shingle = from_pickle(
-        obj_path=os.path.join(args.train_data_dir, "train_x_scaled_shingle.pkl")
-    )
-    train_y_shingle = from_pickle(
-        obj_path=os.path.join(args.train_data_dir, "train_y_shingle.pkl")
-    )
-    test_x_scaled_shingle = from_pickle(
-        obj_path=os.path.join(args.train_data_dir, "test_x_scaled_shingle.pkl")
-    )
-    test_y_shingle = from_pickle(
-        obj_path=os.path.join(args.train_data_dir, "test_y_shingle.pkl")
+        obj_path=os.path.join(
+            args.train_data_dir,
+            "data_x_scaled_shingle.pkl"
+        )
     )
     
+    train_y_shingle = from_pickle(
+        obj_path=os.path.join(
+            args.train_data_dir,
+            "data_y_shingle.pkl"
+        )
+    )
+
     train_ds = CustomDataset(
         x=train_x_scaled_shingle,
         y=train_y_shingle
     )
 
     test_ds = CustomDataset(
-        x=test_x_scaled_shingle,
-        y=test_y_shingle
+        x=train_x_scaled_shingle,
+        y=train_y_shingle
     )
     
     return train_ds, test_ds
@@ -167,12 +174,16 @@ def train(args):
     train_loader, val_loader = get_dataloader(args, train_ds, test_ds)
     
     logger.info("Set components..")
+
     model = nn.DataParallel(
-        AutoEncoder(
-            input_dim=args.num_features*args.shingle_size
+        get_model(
+            input_dim=args.num_features*args.shingle_size + args.emb_size,
+            hidden_sizes=[64, 48],
+            btl_size=32,
+            emb_size=args.emb_size
         )
     )
-
+    
     optimizer = torch.optim.Adam(
         params=model.parameters(),
         lr=args.lr
@@ -222,6 +233,7 @@ if __name__ == "__main__":
     
     parser.add_argument("--shingle_size", type=int, default=os.environ["SM_HP_SHINGLE_SIZE"])
     parser.add_argument("--num_features", type=int, default=os.environ["SM_HP_NUM_FEATURES"])
+    parser.add_argument("--emb_size", type=int, default=os.environ["SM_HP_EMB_SIZE"])
         
     
     train(parser.parse_args())
