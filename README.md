@@ -38,3 +38,7 @@
     <img src="imgs/rapp-explanation.png" width="1100" height="300" style="display: block; margin: 0 auto"/>
 </p>
 # anomaly-detection-with-explanation
+
+# 4. Tutorials
+- **Introduction to Anomaly Detection** <br>
+    * [VOD] http://dmqm.korea.ac.kr/activity/seminar/339
