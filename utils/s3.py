@@ -9,8 +9,11 @@ class s3_handler():
     def __init__(self, region_name=None):
         
         self.region_name = region_name
-        self.resource = boto3.resource('s3', region_name=self.region_name)
-        self.client = boto3.client('s3', region_name=self.region_name)
+        #self.resource = boto3.resource('s3', region_name=self.region_name)
+        #self.client = boto3.client('s3', region_name=self.region_name)
+        
+        self.resource = boto3.resource('s3')
+        self.client = boto3.client('s3')
         
         print (f"This is a S3 handler with [{self.region_name}] region.")
         
@@ -31,7 +34,7 @@ class s3_handler():
                 location = {'LocationConstraint': self.region_name}
                 self.client.create_bucket(
                     Bucket=bucket_name,
-                    CreateBucketConfiguration=location
+                    #CreateBucketConfiguration=location
                 )
             
             print (f"CREATE:[{bucket_name}] Bucket was created successfully")
@@ -122,9 +125,3 @@ class s3_handler():
         bucket = self.resource.Bucket(bucket_name)
         bucket.object_versions.delete() ## delete versioning
         bucket.objects.all().delete() ## delete all objects in the bucket
-        
-        
-        
-        
-       
-        
