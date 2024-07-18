@@ -7,7 +7,6 @@ import pandas as pd
 from distutils.dir_util import copy_tree
 from sklearn.preprocessing import StandardScaler
 
-
 class preprocess():
     
     def __init__(self, args):
@@ -19,16 +18,19 @@ class preprocess():
         self.output_dir = os.path.join(self.proc_prefix, "output")
         os.makedirs(self.input_dir, exist_ok=True)
         os.makedirs(self.output_dir, exist_ok=True)
+
+        self.mlflow_tracking_arn = self.args.mlflow_tracking_arn
+        self.experiment_name = self.args.mlflow_tracking_arn
+        self.mlflow_run_name = self.args.mlflow_run_name
+        print ("MLFLOW_TRACKING_ARN", self.mlflow_tracking_arn)
+        print ("experiment_name", self.experiment_name)
+        print ("run_name", self.mlflow_run_name)
     
     def _data_split(self, ):
             
         #train_data_ratio = 0.99
         clicks_1T = pd.read_csv(os.path.join(self.input_dir, self.args.train_data_name))
     
-        #pdTrain = clicks_1T[["page", "user", "click", "residual", "fault"]][:int(clicks_1T.shape[0] * train_data_ratio)]
-        #pdTest = clicks_1T[["page", "user", "click", "residual", "fault"]][int(clicks_1T.shape[0] * train_data_ratio):]
-        #print (f"Train: {pdTrain.shape}, Test: {pdTest.shape}")
-        
         pdData = clicks_1T[["time", "page", "user", "click", "residual", "fault"]]
         print (f'Data shape: {pdData.shape}')
         
@@ -93,42 +95,65 @@ class preprocess():
 
     def execution(self, ):
 
-        data_x, data_y, data_time = self._data_split()
-        data_x_scaled = self._normalization(data_x)
+        mlflow.set_tracking_uri(self.mlflow_tracking_arn)
+        mlflow.set_experiment(self.experiment_name)
         
-        data_x_scaled_shingle = self._shingle(data_x_scaled)
-        data_time_shingle = self._shingle(data_time)[:, -1].reshape(-1, 1)
-        data_y_shingle = self._shingle(data_y)[:, -1].reshape(-1, 1)
-        data_x_scaled_shingle = np.concatenate([data_time_shingle, data_x_scaled_shingle], axis=1)
-        
-        print (f'data_x_scaled_shingle: {data_x_scaled_shingle.shape}')
-        print (f'data_y_shingle: {data_y_shingle.shape}')
-        print (f'check label: {sum(data_y_shingle == data_y[self.args.shingle_size-1:])}')
-        print (f'fault cnt, train_y_shingle: {sum(data_y_shingle)}, train_y: {sum(data_y[self.args.shingle_size-1:])}')
-        
-        self._to_pickle(data_x_scaled_shingle, os.path.join(self.output_dir, "data_x_scaled_shingle.pkl"))
-        self._to_pickle(data_y_shingle, os.path.join(self.output_dir, "data_y_shingle.pkl"))
-        
-        print (self.args.shingle_size, type(self.args.shingle_size))
-        print ("data_dir", os.listdir(self.input_dir))
-        print ("self.output_dir", os.listdir(self.output_dir))
+        with mlflow.start_run(
+            run_name=self.mlflow_run_name,
+            log_system_metrics=True) as run:
+            
+            run_id = run.info.run_id
+            print ("run_id", run_id)
+
+            with mlflow.start_run(run_name="Preprocessing", nested=True):
                 
+                data_x, data_y, data_time = self._data_split()
+                data_x_scaled = self._normalization(data_x)
+                
+                data_x_scaled_shingle = self._shingle(data_x_scaled)
+                data_time_shingle = self._shingle(data_time)[:, -1].reshape(-1, 1)
+                data_y_shingle = self._shingle(data_y)[:, -1].reshape(-1, 1)
+                data_x_scaled_shingle = np.concatenate([data_time_shingle, data_x_scaled_shingle], axis=1)
+                
+                print (f'data_x_scaled_shingle: {data_x_scaled_shingle.shape}')
+                print (f'data_y_shingle: {data_y_shingle.shape}')
+                print (f'check label: {sum(data_y_shingle == data_y[self.args.shingle_size-1:])}')
+                print (f'fault cnt, train_y_shingle: {sum(data_y_shingle)}, train_y: {sum(data_y[self.args.shingle_size-1:])}')
+                
+                self._to_pickle(data_x_scaled_shingle, os.path.join(self.output_dir, "data_x_scaled_shingle.pkl"))
+                self._to_pickle(data_y_shingle, os.path.join(self.output_dir, "data_y_shingle.pkl"))
+    
+                mlflow.log_input(
+                    mlflow.data.from_pandas(
+                        df=data_x_scaled_shingle,
+                        source=self.input_dir
+                    ),
+                    context="Preprocessing-features",
+                )
+                mlflow.log_input(
+                    mlflow.data.from_pandas(
+                        df=data_y_shingle,
+                        source=self.input_dir
+                    ),
+                    context="Preprocessing-labels",
+                )
+                
+                print (self.args.shingle_size, type(self.args.shingle_size))
+                print ("data_dir", os.listdir(self.input_dir))
+                print ("self.output_dir", os.listdir(self.output_dir))
+                    
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--proc_prefix", type=str, default="/opt/ml/processing")
     parser.add_argument("--shingle_size", type=int, default=4)
     parser.add_argument("--train_data_name", type=str, default="merged_clicks_1T.csv")
-    
-    
+    parser.add_argument("--mlflow_tracking_arn", type=str, default="mlflow_tracking_arn")
+    parser.add_argument("--experiment_name", type=str, default="experiment_name")
+    parser.add_argument("--mlflow_run_name", type=str, default="mlflow_run_name")
+
     args, _ = parser.parse_known_args()
 
     print("Received arguments {}".format(args))
-
-    mlflow.set_tracking_uri(tracking_server_arn)
-    mlflow.set_experiment(experiment_name)
-        with mlflow.start_run(run_name=run_name) as run:
-            run_id = run.info.run_id
-            with mlflow.start_run(run_name="DataPreprocessing", nested=True):
-    
+        
     prep = preprocess(args)
     prep.execution()
