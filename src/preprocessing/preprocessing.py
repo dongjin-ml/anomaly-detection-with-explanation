@@ -1,4 +1,5 @@
 import os
+import mlflow
 import pickle
 import argparse
 import numpy as np
@@ -91,7 +92,7 @@ class preprocess():
         
 
     def execution(self, ):
-        
+
         data_x, data_y, data_time = self._data_split()
         data_x_scaled = self._normalization(data_x)
         
@@ -123,5 +124,11 @@ if __name__ == "__main__":
 
     print("Received arguments {}".format(args))
 
+    mlflow.set_tracking_uri(tracking_server_arn)
+    mlflow.set_experiment(experiment_name)
+        with mlflow.start_run(run_name=run_name) as run:
+            run_id = run.info.run_id
+            with mlflow.start_run(run_name="DataPreprocessing", nested=True):
+    
     prep = preprocess(args)
     prep.execution()
