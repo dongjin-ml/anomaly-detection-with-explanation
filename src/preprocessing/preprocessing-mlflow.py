@@ -20,7 +20,7 @@ class preprocess():
         os.makedirs(self.output_dir, exist_ok=True)
 
         self.mlflow_tracking_arn = self.args.mlflow_tracking_arn
-        self.experiment_name = self.args.mlflow_tracking_arn
+        self.experiment_name = self.args.experiment_name
         self.mlflow_run_name = self.args.mlflow_run_name
         print ("MLFLOW_TRACKING_ARN", self.mlflow_tracking_arn)
         print ("experiment_name", self.experiment_name)
