@@ -1,0 +1,6 @@
+artifact_location: file:///home/ec2-user/SageMaker/anomaly-detection-with-explanation/mlruns/390098555700600580
+creation_time: 1739681068655
+experiment_id: '390098555700600580'
+last_update_time: 1739681068655
+lifecycle_stage: active
+name: anomaly-detection-exp-trial-Local-3
