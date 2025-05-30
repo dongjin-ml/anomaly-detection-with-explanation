@@ -1,0 +1,14 @@
+
+FROM 763104351884.dkr.ecr.us-west-2.amazonaws.com/pytorch-training:2.1-gpu-py310
+
+RUN pip install -U pip boto3 sagemaker
+
+COPY requirements.txt /opt/ml/packages/
+RUN pip install -r /opt/ml/packages/requirements.txt
+
+# 기본 환경변수
+ENV PYTHONUNBUFFERED=TRUE
+
+# Processing Job 환경변수
+ENV SM_INPUT_DIR=/opt/ml/processing/input
+ENV SM_OUTPUT_DIR=/opt/ml/processing/output

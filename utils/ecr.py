@@ -6,7 +6,7 @@ class ecr_handler():
         
         self.strUriSuffix = "amazonaws.com"
         
-    def build_docker(self, strDockerDir, strDockerFile, strRepositoryName, strRegionName, strAccountId):
+    def build_docker(self, strDockerDir, strDockerFile, strRepositoryName, strRegionName, strAccountId, no_cache=False):
         
         strCurrentWD = os.getcwd()
         print (os.getcwd())
@@ -24,7 +24,12 @@ class ecr_handler():
         
         
         #strQuery = "".join(["docker build -t ", "'", strRepositoryName, "' ", "."])
-        strQuery = "".join(["docker build -f ", "'", strDockerFile, "' ", "-t ", "'", strRepositoryName, "' ", "."])
+        
+        if no_cache: 
+            strQuery = "".join(["docker build --no-cache -f ", "'", strDockerFile, "' ", "-t ", "'", strRepositoryName, "' ", "."])
+        else:
+            strQuery = "".join(["docker build -f ", "'", strDockerFile, "' ", "-t ", "'", strRepositoryName, "' ", "."])
+        
         strResponse = os.popen(strQuery).read()
         
         print (strResponse)
