@@ -2,6 +2,7 @@ import os
 import json
 import torch
 import pickle
+import mlflow
 import tarfile
 import argparse
 import torch.nn as nn
@@ -28,6 +29,14 @@ class evaluation():
 
         self._extract_model_artifacts()
         self.device = "cuda" if torch.cuda.is_available() else "cpu"
+        
+        self.mlflow_tracking_arn = self.args.mlflow_tracking_arn
+        self.experiment_name = self.args.experiment_name
+        self.mlflow_run_name = self.args.mlflow_run_name
+        
+        print ("MLFLOW_TRACKING_ARN", self.mlflow_tracking_arn)
+        print ("experiment_name", self.experiment_name)
+        print ("run_name", self.mlflow_run_name)
         
     def _extract_model_artifacts(self, ):
         """모델 아티팩트 압축 해제"""
@@ -108,37 +117,80 @@ class evaluation():
     
     def _metric(self, pred, real):
         
-        ##############################################################################################
-        #
-        #    your logic to get performance metric such as precision, recall, f-sccore, AUROC AUPR etc.
-        #
-        ##############################################################################################
+        mlflow.set_tracking_uri(self.mlflow_tracking_arn)
+        mlflow.set_experiment(self.experiment_name)
         
-        accuracy = 0.8
-        precision = 0.75
-        recall = 0.85
-        f1 = 0.88
+        filter_string = f"run_name='{self.mlflow_run_name}'"
+        run_id = mlflow.search_runs(filter_string=filter_string)["run_id"][0]
+        print ("filter_string", filter_string)
+        print ("mlflow.search_runs(filter_string=filter_string)", mlflow.search_runs(filter_string=filter_string))
+        print ("run_id", run_id)
+        params = {k: o for k, o in vars(self.args).items()}
         
-        report_dict = {
-            "metrics": {
-                "accuracy": {
-                    "value": accuracy,
-                    "standard_deviation": None
-                },
-                "precision": {
-                    "value": precision,
-                    "standard_deviation": None
-                },
-                "recall": {
-                    "value": recall,
-                    "standard_deviation": None
-                },
-                "f1": {
-                    "value": f1,
-                    "standard_deviation": None
-                },
-            },
-        }
+        
+        
+        with mlflow.start_run(run_id=run_id, log_system_metrics=True):
+            with mlflow.start_run(run_name="Evaluation", log_system_metrics=True, nested=True) as evaluation_run:
+                
+                ##############################################################################################
+                #
+                #    your logic to get performance metric such as precision, recall, f-sccore, AUROC AUPR etc.
+                #
+                ##############################################################################################
+                
+                
+                mlflow.log_params({**params})
+                mlflow.autolog()
+                
+                accuracy = 0.8
+                precision = 0.75
+                recall = 0.85
+                f1 = 0.88
+
+                report_dict = {
+                    "metrics": {
+                        "accuracy": {
+                            "value": accuracy,
+                            "standard_deviation": None
+                        },
+                        "precision": {
+                            "value": precision,
+                            "standard_deviation": None
+                        },
+                        "recall": {
+                            "value": recall,
+                            "standard_deviation": None
+                        },
+                        "f1": {
+                            "value": f1,
+                            "standard_deviation": None
+                        },
+                    },
+                }
+                
+                mlflow.log_metric(
+                    key='accuracy',
+                    value=accuracy,
+                    step=0
+                )
+
+                mlflow.log_metric(
+                    key='precision',
+                    value=precision,
+                    step=0
+                )
+
+                mlflow.log_metric(
+                    key='recall',
+                    value=recall,
+                    step=0
+                )
+                
+                mlflow.log_metric(
+                    key='f1',
+                    value=f1,
+                    step=0
+                )
         
         return report_dict
          
@@ -175,8 +227,9 @@ class evaluation():
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--proc_prefix", type=str, default="/opt/ml/processing")
-    #parser.add_argument("--shingle_size", type=int, default=4)
-    #parser.add_argument("--train_data_name", type=str, default="merged_clicks_1T.csv")
+    parser.add_argument("--mlflow_tracking_arn", type=str, default="mlflow_tracking_arn")
+    parser.add_argument("--experiment_name", type=str, default="experiment_name")
+    parser.add_argument("--mlflow_run_name", type=str, default="mlflow_run_name")
 
     args, _ = parser.parse_known_args()
 
