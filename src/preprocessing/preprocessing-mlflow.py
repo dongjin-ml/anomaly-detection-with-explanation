@@ -42,10 +42,6 @@ class preprocess():
             ),
             context="Preprocessing-input",
         )
-
-        #train_x, train_y = pdTrain[[strCol for strCol in pdTrain.columns if strCol != "fault"]].values, pdTrain["fault"].values.reshape(-1, 1)
-        #test_x, test_y = pdTest[[strCol for strCol in pdTest.columns if strCol != "fault"]].values, pdTest["fault"].values.reshape(-1, 1)
-        #print (f'train_x: {train_x.shape}, train_y: {train_y.shape}, test_x: {test_x.shape}, test_y: {test_y.shape}')
         
         data_x, data_y = pdData[[strCol for strCol in pdData.columns if strCol != "fault"]].values, pdData["fault"].values.reshape(-1, 1)
         data_x, data_time = data_x[:, 1:], data_x[:, 0].reshape(-1, 1)
